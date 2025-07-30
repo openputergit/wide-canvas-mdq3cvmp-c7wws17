@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResumeBuilder & Chess</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <style>
+        * { font-family: 'Poppins', sans-serif; }
+        .chess-board { user-select: none; }
+        .piece { cursor: grab; transition: transform 0.2s; }
+        .piece:active { cursor: grabbing; }
+        .legal-move { background-color: rgba(0, 255, 0, 0.2); }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Login Page -->
+    <div id="loginPage" class="container mx-auto px-4 py-8">
+        <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-2xl font-bold mb-6 text-center">Welcome to ResumeBuilder & Chess</h2>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Name</label>
+                    <input type="text" id="name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Welcome Page -->
+    <div id="welcomePage" class="hidden container mx-auto px-4 py-8">
+        <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6 text-center">
+            <h2 class="text-3xl font-bold mb-6">Welcome! Choose Your Activity</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <button onclick="showResume()" class="p-6 bg-blue-100 rounded-lg hover:bg-blue-200">
+                    <i class="bi bi-file-text text-4xl text-blue-600"></i>
+                    <h3 class="mt-4 text-xl font-semibold">Build Resume</h3>
+                </button>
+                <button onclick="showChess()" class="p-6 bg-green-100 rounded-lg hover:bg-green-200">
+                    <i class="bi bi-puzzle text-4xl text-green-600"></i>
+                    <h3 class="mt-4 text-xl font-semibold">Play Chess</h3>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resume Builder -->
+    <div id="resumePage" class="hidden container mx-auto px-4 py-8">
+        <!-- Resume template selection and form will be dynamically generated -->
+    </div>
+
+    <!-- Chess Game -->
+    <div id="chessPage" class="hidden container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <div class="flex flex-col md:flex-row gap-6">
+                <div class="w-full md:w-2/3">
+                    <div id="board" class="w-full aspect-square bg-white rounded-lg shadow-lg"></div>
+                </div>
+                <div class="w-full md:w-1/3 space-y-4">
+                    <div class="bg-white p-4 rounded-lg shadow-lg">
+                        <h3 class="font-bold mb-2">Game Controls</h3>
+                        <div class="space-y-2">
+                            <button onclick="undoMove()" class="w-full bg-gray-200 py-2 rounded hover:bg-gray-300">Undo Move</button>
+                            <button onclick="flipBoard()" class="w-full bg-gray-200 py-2 rounded hover:bg-gray-300">Flip Board</button>
+                            <select id="difficulty" class="w-full bg-gray-200 py-2 rounded">
+                                <option value="1">Beginner</option>
+                                <option value="2">Intermediate</option>
+                                <option value="3">Advanced</option>
+                                <option value="4">Grandmaster</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow-lg">
+                        <h3 class="font-bold mb-2">Game Info</h3>
+                        <div id="gameStatus" class="text-sm"></div>
+                        <div id="moveHistory" class="mt-2 h-40 overflow-y-auto text-sm"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentUser = null;
+        let game = new Chess();
+        let board = null;
+
+        // Login handling
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const userData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value
+            };
+            // Simulating database storage
+            localStorage.setItem('currentUser', JSON.stringify(userData));
+            currentUser = userData;
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('welcomePage').classList.remove('hidden');
+        });
+
+        // Chess game implementation
+        function initChessBoard() {
+            // Initialize chess board (using a placeholder implementation)
+            const config = {
+                draggable: true,
+                position: 'start',
+                onDragStart: onDragStart,
+                onDrop: onDrop,
+                onSnapEnd: onSnapEnd
+            };
+            // In a real implementation, we would initialize the board here
+            updateStatus();
+        }
+
+        function onDragStart(source, piece) {
+            // Allow only white pieces to move (player is white)
+            if (game.game_over()) return false;
+            if (piece.search(/^b/) !== -1) return false;
+        }
+
+        function onDrop(source, target) {
+            const move = game.move({
+                from: source,
+                to: target,
+                promotion: 'q'
+            });
+
+            if (move === null) return 'snapback';
+            updateStatus();
+            // Make AI move
+            window.setTimeout(makeAiMove, 250);
+        }
+
+        function onSnapEnd() {
+            updateStatus();
+        }
+
+        function makeAiMove() {
+            const moves = game.moves();
+            if (moves.length > 0) {
+                const move = moves[Math.floor(Math.random() * moves.length)];
+                game.move(move);
+                updateStatus();
+            }
+        }
+
+        function updateStatus() {
+            let status = '';
+            if (game.in_checkmate()) {
+                status = 'Game over, ' + (game.turn() === 'w' ? 'black' : 'white') + ' wins.';
+            } else if (game.in_draw()) {
+                status = 'Game over, drawn position';
+            } else {
+                status = (game.turn() === 'w' ? 'White' : 'Black') + ' to move';
+                if (game.in_check()) {
+                    status += ', ' + (game.turn() === 'w' ? 'White' : 'Black') + ' is in check';
+                }
+            }
+            document.getElementById('gameStatus').textContent = status;
+        }
+
+        function showResume() {
+            document.getElementById('welcomePage').classList.add('hidden');
+            document.getElementById('resumePage').classList.remove('hidden');
+            // Initialize resume builder (implementation would go here)
+        }
+
+        function showChess() {
+            document.getElementById('welcomePage').classList.add('hidden');
+            document.getElementById('chessPage').classList.remove('hidden');
+            initChessBoard();
+        }
+
+        // Initialize app
+        if (localStorage.getItem('currentUser')) {
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('welcomePage').classList.remove('hidden');
+        }
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
